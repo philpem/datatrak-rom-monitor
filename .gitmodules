@@ -1,0 +1,3 @@
+[submodule "EASy68K-asm"]
+	path = EASy68K-asm
+	url = https://github.com/rayarachelian/EASy68K-asm.git
