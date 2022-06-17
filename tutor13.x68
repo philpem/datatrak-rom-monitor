@@ -1,3 +1,7 @@
+* Ported to the Datatrak Locator Mk.II hardware
+* by Phil Pemberton <philpem@philpem.me.uk>
+*
+
 * THIS VERSION MODIFIED FOR TEESSIDE X68K PC-2.2 CROSS ASSEMBLER
 *     ftp://nyquist.ee.ualberta.ca/pub/motorola/m68k/x68k.zip
 
@@ -66,266 +70,526 @@ RESET    EQU     $43            MASTER RESET FOR ACIA
 *  N O T E:  Ram locations:   starting at zero                 *
 ****************************************************************
 
-         ORG     $000000
+         ORG     $200000
 
+VECTAB
 *                               DEC HEX  DESCRIPTION
+
+* The first two vectors are dummies
+* They're here to make offset calculation easier.
+
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              0   $00  AREA OVERLAID BY ROM SR
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              1   $01  AND PC
 
-
+         DS.W    1                            JMP.L instr (4EF9)
 AV2      DS.L    1              2   $02  BUS ERROR            "BUS "
+         DS.W    1                            JMP.L instr (4EF9)
 AV3      DS.L    1              3   $03  ADDRESS ERROR        "ADDR"
+         DS.W    1                            JMP.L instr (4EF9)
 AV4      DS.L    1              4   $04  ILL INSTRUCTION      "OPCO"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              5   $05  DIVIDE BY ZERO       "DIV0"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              6   $06  CHECK TRAP           "CHCK"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              7   $07  TRAP V               "TP V"
+         DS.W    1                            JMP.L instr (4EF9)
 AV8      DS.L    1              8   $08  PRIVILEDGE VIOLATION "PRIV"
+         DS.W    1                            JMP.L instr (4EF9)
 AV9      DS.L    1              9   $09  TRACE
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              10  $0A  1010 LINE EMULATION  "1010"
+         DS.W    1                            JMP.L instr (4EF9)
 AV11     DS.L    1              11  $0B  1111 LINE EMULATION  "1111"
-AV12     DS.L    1              12  $0C  USED AS TEMPORARY STORAGE FOR VECTOR MSGS.
+         DS.W    1                            JMP.L instr (4EF9)
+         DS.L    1              12  $0C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              13  $0D  NOT USED
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              14  $0E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              15  $0F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              16  $10
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              17  $11
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              18  $12
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              19  $13
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              20  $14
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              21  $15
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              22  $16
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              23  $17
+         DS.W    1                            JMP.L instr (4EF9)
 AV24     DS.L    1              24  $18   0  AUTO VECTORS     "SPUR"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              25  $19   1                   "AV#1"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              26  $1A   2                   "AV#2"   TEST BUTTON
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              27  $1B   3                   "AV#3"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              28  $1C   4                   "AV#4"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              29  $1D   5                   "AV#5"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              30  $1E   6                   "AV#6"
+         DS.W    1                            JMP.L instr (4EF9)
 AV31     DS.L    1              31  $1F   7                   "AV#7   [ABORT BUTTON]
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              32  $20   TRAP  0             "UT 0"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              33  $21   TRAP  1             "UT 1"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              34  $22   TRAP  2             "UT 2"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              35  $23   TRAP  3             "UT 3"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              36  $24   TRAP  4             "UT 4"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              37  $25   TRAP  5             "UT 5"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              38  $26   TRAP  6             "UT 6"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              39  $27   TRAP  7             "UT 7"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              40  $28   TRAP  8             "UT 8"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              41  $29   TRAP  9             "UT 9"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              42  $2A   TRAP 10             "UT A"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              43  $2B   TRAP 11             "UT B"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              44  $2C   TRAP 12             "UT C"
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              45  $2D   TRAP 13             "UT D"
+         DS.W    1                            JMP.L instr (4EF9)
 AV46     DS.L    1              46  $2E   TRAP 14             "UT E"
+         DS.W    1                            JMP.L instr (4EF9)
 AV47     DS.L    1              47  $2F   TRAP 15             "UT F"
+         DS.W    1                            JMP.L instr (4EF9)
 AV48     DS.L    1              48  $30
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              49  $31
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              50  $32
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              51  $33
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              52  $34
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              53  $35
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              54  $36
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              55  $37
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              56  $38
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              57  $39
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              58  $3A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              59  $3B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              60  $3C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              61  $3D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              62  $3E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              63  $3F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              64  $40
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              65  $41
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              66  $42
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              67  $43
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              68  $44
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              69  $45
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              70  $46
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              71  $47
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              72  $48
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              73  $49
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              74  $4A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              75  $4B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              76  $4C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              77  $4D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              78  $4E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              79  $4F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              80  $50
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              81  $51
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              82  $52
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              83  $53
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              84  $54
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              85  $55
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              86  $56
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              87  $57
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              88  $58
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              89  $59
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              90  $5A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              91  $5B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              92  $5C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              93  $5D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              94  $5E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              95  $5F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              96  $60
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              97  $61
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              98  $62
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              99  $63
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              100  $64
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              101  $65
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              102  $66
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              103  $67
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              104  $68
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              105  $69
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              106  $6A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              107  $6B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              108  $6C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              109  $6D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              110  $6E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              111  $6F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              112  $70
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              113  $71
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              114  $72
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              115  $73
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              116  $74
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              117  $75
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              118  $76
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              119  $77
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              120  $78
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              121  $79
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              122  $7A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              123  $7B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              124  $7C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              125  $7D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              126  $7E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              127  $7F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              128  $80
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              129  $81
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              130  $82
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              131  $83
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              132  $84
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              133  $85
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              134  $86
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              135  $87
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              136  $88
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              137  $89
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              138  $8A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              139  $8B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              140  $8C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              141  $8D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              142  $8E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              143  $8F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              144  $90
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              145  $91
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              146  $92
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              147  $93
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              148  $94
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              149  $95
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              150  $96
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              151  $97
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              152  $98
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              153  $99
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              154  $9A
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              155  $9B
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              156  $9C
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              157  $9D
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              158  $9E
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              159  $9F
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              160  $A0
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              161  $A1
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              162  $A2
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              163  $A3
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              164  $A4
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              165  $A5
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              166  $A6
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              167  $A7
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              168  $A8
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              169  $A9
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              170  $AA
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              171  $AB
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              172  $AC
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              173  $AD
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              174  $AE
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              175  $AF
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              176  $B0
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              177  $B1
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              178  $B2
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              179  $B3
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              180  $B4
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              181  $B5
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              182  $B6
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              183  $B7
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              184  $B8
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              185  $B9
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              186  $BA
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              187  $BB
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              188  $BC
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              189  $BD
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              190  $BE
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              191  $BF
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              192  $C0
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              193  $C1
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              194  $C2
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              195  $C3
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              196  $C4
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              197  $C5
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              198  $C6
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              199  $C7
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              200  $C8
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              201  $C9
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              202  $CA
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              203  $CB
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              204  $CC
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              205  $CD
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              206  $CE
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              207  $CF
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              208  $D0
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              209  $D1
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              210  $D2
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              211  $D3
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              212  $D4
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              213  $D5
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              214  $D6
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              215  $D7
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              216  $D8
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              217  $D9
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              218  $DA
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              219  $DB
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              220  $DC
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              221  $DD
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              222  $DE
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              223  $DF
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              224  $E0
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              225  $E1
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              226  $E2
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              227  $E3
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              228  $E4
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              229  $E5
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              230  $E6
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              231  $E7
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              232  $E8
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              233  $E9
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              234  $EA
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              235  $EB
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              236  $EC
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              237  $ED
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              238  $EE
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              239  $EF
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              240  $F0
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              241  $F1
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              242  $F2
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              243  $F3
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              244  $F4
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              245  $F5
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              246  $F6
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              247  $F7
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              248  $F8
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              249  $F9
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              250  $FA
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              251  $FB
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              252  $FC
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              253  $FD            3RD
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              254  $FE            2ND
+         DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              255  $FF VECTOR FOR 1ST IPC DISK CONTROLLER
 
 
@@ -339,6 +603,7 @@ REGA7    DS.L    1              A7 REGISTER
 REGUS    DS.L    1              USER STACK
 
 
+EVECTYP  DS.L    1              ERROR VECTOR TYPE
 
 ****************************************************************
 *              WORKING STORAGE                                 *
@@ -480,10 +745,277 @@ LDATA    EQU     $FFFFFFC4      DS.B    1
 *-------------------------------------------------------------------------
 * File B         Init Vectors+Ram                                 05/29/82
 
-         ORG     $008000
+
+* VECtor (table) ENTry
+*
+* Inserts the address of the specified entry in the RAM vector table.
+* Used for vector trampolines, to allow vectors to be reassigned.
+VECENT   MACRO
+         DC.L    VECTAB+((AV3-AV2)*\1)
+         ENDM
+
+
+         ORG     $000000
 
 FIRST    DC.L    REGA7          SUPERVISOR STACK
          DC.L    START          PROGRAM COUNTER
+
+         VECENT   2
+         VECENT   3
+         VECENT   4
+         VECENT   5
+         VECENT   6
+         VECENT   7
+         VECENT   8
+         VECENT   9
+         VECENT   10
+         VECENT   11
+         VECENT   12
+         VECENT   13
+         VECENT   14
+         VECENT   15
+         VECENT   16
+         VECENT   17
+         VECENT   18
+         VECENT   19
+         VECENT   20
+         VECENT   21
+         VECENT   22
+         VECENT   23
+         VECENT   24
+         VECENT   25
+         VECENT   26
+         VECENT   27
+         VECENT   28
+         VECENT   29
+         VECENT   30
+         VECENT   31
+         VECENT   32
+         VECENT   33
+         VECENT   34
+         VECENT   35
+         VECENT   36
+         VECENT   37
+         VECENT   38
+         VECENT   39
+         VECENT   40
+         VECENT   41
+         VECENT   42
+         VECENT   43
+         VECENT   44
+         VECENT   45
+         VECENT   46
+         VECENT   47
+         VECENT   48
+         VECENT   49
+         VECENT   50
+         VECENT   51
+         VECENT   52
+         VECENT   53
+         VECENT   54
+         VECENT   55
+         VECENT   56
+         VECENT   57
+         VECENT   58
+         VECENT   59
+         VECENT   60
+         VECENT   61
+         VECENT   62
+         VECENT   63
+         VECENT   64
+         VECENT   65
+         VECENT   66
+         VECENT   67
+         VECENT   68
+         VECENT   69
+         VECENT   70
+         VECENT   71
+         VECENT   72
+         VECENT   73
+         VECENT   74
+         VECENT   75
+         VECENT   76
+         VECENT   77
+         VECENT   78
+         VECENT   79
+         VECENT   80
+         VECENT   81
+         VECENT   82
+         VECENT   83
+         VECENT   84
+         VECENT   85
+         VECENT   86
+         VECENT   87
+         VECENT   88
+         VECENT   89
+         VECENT   90
+         VECENT   91
+         VECENT   92
+         VECENT   93
+         VECENT   94
+         VECENT   95
+         VECENT   96
+         VECENT   97
+         VECENT   98
+         VECENT   99
+         VECENT   100
+         VECENT   101
+         VECENT   102
+         VECENT   103
+         VECENT   104
+         VECENT   105
+         VECENT   106
+         VECENT   107
+         VECENT   108
+         VECENT   109
+         VECENT   110
+         VECENT   111
+         VECENT   112
+         VECENT   113
+         VECENT   114
+         VECENT   115
+         VECENT   116
+         VECENT   117
+         VECENT   118
+         VECENT   119
+         VECENT   120
+         VECENT   121
+         VECENT   122
+         VECENT   123
+         VECENT   124
+         VECENT   125
+         VECENT   126
+         VECENT   127
+         VECENT   128
+         VECENT   129
+         VECENT   130
+         VECENT   131
+         VECENT   132
+         VECENT   133
+         VECENT   134
+         VECENT   135
+         VECENT   136
+         VECENT   137
+         VECENT   138
+         VECENT   139
+         VECENT   140
+         VECENT   141
+         VECENT   142
+         VECENT   143
+         VECENT   144
+         VECENT   145
+         VECENT   146
+         VECENT   147
+         VECENT   148
+         VECENT   149
+         VECENT   150
+         VECENT   151
+         VECENT   152
+         VECENT   153
+         VECENT   154
+         VECENT   155
+         VECENT   156
+         VECENT   157
+         VECENT   158
+         VECENT   159
+         VECENT   160
+         VECENT   161
+         VECENT   162
+         VECENT   163
+         VECENT   164
+         VECENT   165
+         VECENT   166
+         VECENT   167
+         VECENT   168
+         VECENT   169
+         VECENT   170
+         VECENT   171
+         VECENT   172
+         VECENT   173
+         VECENT   174
+         VECENT   175
+         VECENT   176
+         VECENT   177
+         VECENT   178
+         VECENT   179
+         VECENT   180
+         VECENT   181
+         VECENT   182
+         VECENT   183
+         VECENT   184
+         VECENT   185
+         VECENT   186
+         VECENT   187
+         VECENT   188
+         VECENT   189
+         VECENT   190
+         VECENT   191
+         VECENT   192
+         VECENT   193
+         VECENT   194
+         VECENT   195
+         VECENT   196
+         VECENT   197
+         VECENT   198
+         VECENT   199
+         VECENT   200
+         VECENT   201
+         VECENT   202
+         VECENT   203
+         VECENT   204
+         VECENT   205
+         VECENT   206
+         VECENT   207
+         VECENT   208
+         VECENT   209
+         VECENT   210
+         VECENT   211
+         VECENT   212
+         VECENT   213
+         VECENT   214
+         VECENT   215
+         VECENT   216
+         VECENT   217
+         VECENT   218
+         VECENT   219
+         VECENT   220
+         VECENT   221
+         VECENT   222
+         VECENT   223
+         VECENT   224
+         VECENT   225
+         VECENT   226
+         VECENT   227
+         VECENT   228
+         VECENT   229
+         VECENT   230
+         VECENT   231
+         VECENT   232
+         VECENT   233
+         VECENT   234
+         VECENT   235
+         VECENT   236
+         VECENT   237
+         VECENT   238
+         VECENT   239
+         VECENT   240
+         VECENT   241
+         VECENT   242
+         VECENT   243
+         VECENT   244
+         VECENT   245
+         VECENT   246
+         VECENT   247
+         VECENT   248
+         VECENT   249
+         VECENT   250
+         VECENT   251
+         VECENT   252
+         VECENT   253
+         VECENT   254
+         VECENT   255
+
+* PAP: Not sure what this is here for. Checked in "TRACE" 
 V2       BRA.L   TRACE
 
 
@@ -509,11 +1041,11 @@ INIT     MOVE.B  D1,(A0)+       ZERO MEMORY
 * SPECIAL HANDLING FOR BUS ERROR AND ADDRESS ERROR *
 ****************************************************
 
-BERRMSG  MOVE.L  #'BUS ',$30
+BERRMSG  MOVE.L  #'BUS ',EVECTYP
 
          BRA.S   VECTBE
 
-ADDRMSG  MOVE.L  #'ADDR',$30
+ADDRMSG  MOVE.L  #'ADDR',EVECTYP
 
 
 VECTBE   MOVE.L  (A7)+,BERRD
@@ -624,10 +1156,11 @@ FIXDCRLF LEA     BUFFER,A6
 * INITIALIZE VECTORS *
 **********************
 *                               Set most vectors to point at "????" routine
-INITVECT LEA     8,A0           Skip (Restart) STACK & ADDRESS vectors
+INITVECT LEA     VECTAB+8,A0    Skip (Restart) STACK & ADDRESS vectors
          LEA     ABORTE(PC),A1  A1 = "Default" TRAP ERROR routine address
 
-INIT0    MOVE.L  A1,(A0)+       INITIALIZE VECTOR
+INIT0    MOVE.W  #$4EF9,(A0)+   Store jump instruction
+         MOVE.L  A1,(A0)+       INITIALIZE VECTOR
          CMPA.L  #$400,A0       Done?
          BMI.S   INIT0          *
          RTS
@@ -964,13 +1497,17 @@ SOLIST   DS      0              Start Of LIST
 *Reprogram some VECTORS to specific ERROR handler routines *
 ************************************************************
 
+* Start by loading AV4..AV11 (illegal opcode thru line-F)
+
 INITVMSG LEA     VECT(PC),A0    A0 = START OF VECTOR TABLE
          LEA     AV4,A1         A1 = FIRST VECTOR TO INITIALIZE
-         MOVEQ   #10,D0         D0 = COUNT
+         MOVEQ   #(VECT1-VECT),D0     D0 = Length of MOVE.L and short branch (see VECT)
 VECTI    MOVE.L  A0,(A1)+       MOVE ADDRESS TO VECTOR
          ADD.L   D0,A0          BUMP ADDRESS
          CMPA.L  #AV11+4,A1
          BNE     VECTI
+
+* Next load AV24..AV47 (spurious, autovectors, user traps)
 
          LEA     AV24,A1        A1 = NEXT VECTOR TO INITIALIZE
 VECTI2   MOVE.L  A0,(A1)+       MOVE ADDRESS TO VECTOR
@@ -981,103 +1518,103 @@ VECTI2   MOVE.L  A0,(A1)+       MOVE ADDRESS TO VECTOR
 
 
 *************************************************************************
-* STANDARD VECTOR "MESSAGE" HANDLING ROUTINE ($30 IS TEMP STORAGE AREA) *
+* STANDARD VECTOR "MESSAGE" HANDLING ROUTINE (EVECTYP IS TEMP STORAGE AREA) *
 *************************************************************************
 
-VECT     MOVE.L  #'OPCO',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+VECT     MOVE.L  #'OPCO',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'DIV0',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+VECT1    MOVE.L  #'DIV0',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'CHCK',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'CHCK',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'TP V',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'TP V',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'PRIV',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'PRIV',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'TRAC',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'TRAC',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'1010',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'1010',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'1111',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'1111',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT5
-         MOVE.L  #'SPUR',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'SPUR',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
 EVECT5   BRA.S   EVECT6
-         MOVE.L  #'AV#1',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#1',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT6
-         MOVE.L  #'AV#2',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#2',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT6
-         MOVE.L  #'AV#3',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#3',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT6
-         MOVE.L  #'AV#4',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#4',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT6
-         MOVE.L  #'AV#5',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#5',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT6
-         MOVE.L  #'AV#6',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#6',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT6
-         MOVE.L  #'AV#7',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'AV#7',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
 EVECT6   BRA.S   EVECT7
-         MOVE.L  #'UT 0',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 0',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 1',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 1',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 2',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 2',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 3',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 3',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 4',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 4',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 5',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 5',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 6',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 6',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT7
-         MOVE.L  #'UT 7',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 7',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
 EVECT7   BRA.S   EVECT
-         MOVE.L  #'UT 8',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 8',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT
-         MOVE.L  #'UT 9',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT 9',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT
-         MOVE.L  #'UT A',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT A',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT
-         MOVE.L  #'UT B',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT B',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT
-         MOVE.L  #'UT C',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT C',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT
-         MOVE.L  #'UT D',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT D',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BRA.S   EVECT
-         MOVE.L  #'UT E',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT E',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
          BSR.S   EVECT
-         MOVE.L  #'UT F',$30    MOVE TO $30, USE SHORT BRANCHES AND PRINT IT
+         MOVE.L  #'UT F',EVECTYP    MOVE TO EVECTYP, USE SHORT BRANCHES AND PRINT IT
 
 
 *
@@ -3770,7 +4307,7 @@ MSG012   DC.B    LF,LF,'SOFTWARE ABORT',CR,LF,EOT
 
          DC.B    0              PAD BYTE
 
-ABORTE MOVE.L    #'????',$30    UNKNOWN INTERRUPT
+ABORTE MOVE.L    #'????',EVECTYP    UNKNOWN INTERRUPT
 
 
 *    SAVE REGISTERS AND PRINT VECTOR MSG
@@ -3779,7 +4316,7 @@ EVECTL   SAVEREGS
          BSR     FAULTSER       RESET SERIAL PORTS
 EVECT2   BSR     FIXBUF         PRINT MESSAGE "XXXX TRAP ERROR"
          MOVE.W  #$0D0A,(A6)+
-         MOVE.L  AV12,(A6)+     TYPE OF ERROR
+         MOVE.L  EVECTYP,(A6)+  TYPE OF ERROR
          LEA     MSG010(PC),A5  'TRAP ERROR'
          BSR     FIXDADD
          BRA     EVECT4
