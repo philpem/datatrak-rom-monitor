@@ -1478,7 +1478,8 @@ INITVMSG LEA     VECT(PC),A0    A0 = START OF VECTOR TABLE
          MOVEQ   #(VECT1-VECT),D0     D0 = Length of MOVE.L and short branch (see VECT)
 VECTI    MOVE.L  A0,(A1)+       MOVE ADDRESS TO VECTOR
          ADD.L   D0,A0          BUMP ADDRESS
-         CMPA.L  #AV11+4,A1
+         ADDQ.L  #2,A1          Skip the JMP instruction for the next vector
+         CMPA.L  #AV11+(AV3-AV2),A1
          BNE     VECTI
 
 * Next load AV24..AV47 (spurious, autovectors, user traps)
@@ -1486,6 +1487,7 @@ VECTI    MOVE.L  A0,(A1)+       MOVE ADDRESS TO VECTOR
          LEA     AV24,A1        A1 = NEXT VECTOR TO INITIALIZE
 VECTI2   MOVE.L  A0,(A1)+       MOVE ADDRESS TO VECTOR
          ADD.L   D0,A0          BUMP ADDRESS
+         ADD.L   D0,A1          BUMP VECTOR ADDRESS
          CMPA.L  #AV48,A1
          BNE     VECTI2
          RTS
