@@ -671,8 +671,6 @@ CRPADS   DS.B    2              CARRIAGE RETURN NULL PADS
 
 OUTTO    DS.L    1              HOLDS ADDRESS OF OUTPUT ROUTINE
 INFROM   DS.L    1              HOLDS ADDRESS OF INPUT ROUTINE
-ALTSER1  DS.L    1              ALTERNATE SERIAL PORT#1
-ALTSER2  DS.L    1              ALTERNATE SERIAL PORT#2
 INPORT1  DS.L    1              INPUT ROUTINE ADDRESS
 OUTPORT1 DS.L    1              ADDRESS FOR OUPUT ROUTINE
 INPORT2  DS.L    1              ADDRESS FOR INPUT ROUTINE
@@ -682,9 +680,7 @@ OUTPORT3 DS.L    1              THIS MIGHT BE FOR PRINTER
 INPORT4  DS.L    1              CASSETTE
 OUTPORT4 DS.L    1              CASSETTE
 MD1CON   DS.W    1              ACIA PROFILE (PORT1/PORT2)
-PDIPORT  DS.L    1              PDIPORT ADDRESS
 CRTPNT   DS.W    1              OUTPUT TO PRINTER AND CRT
-TAPENULS DS.B    1              NULLS FOR CASSETTE
 
          DS.B    1              PAD BYTE
 
@@ -1224,38 +1220,16 @@ START11  MOVE.W  #$2700,SR      MASK OFF INTERRUPTS
 * Y.SA
          ADDR2MEM  OUT1CR0,OUTPORT1 INITIALIZE I/O ROUTINES
          ADDR2MEM  OUTPUT20,OUTPORT2
-         ADDR2MEM  PRCRLF,OUTPORT3     PRINTER DRIVER
-         ADDR2MEM  TAPEOUT,OUTPORT4    CASSETTE
+         ADDR2MEM  OUTPUT20,OUTPORT3     PRINTER DRIVER
+         ADDR2MEM  OUTPUT20,OUTPORT4   CASSETTE   DTRK - was TAPEOUT
          ADDR2MEM  PORTIN10,INPORT1
          ADDR2MEM  PORTIN20,INPORT2
          ADDR2MEM  PORTIN10,INPORT3
-         ADDR2MEM  TAPEIN,INPORT4      CASSETTE
+         ADDR2MEM  PORTIN20,INPORT4      CASSETTE   DTRK - was TAPEIN
 
-         MOVE.B  #8,TAPENULS    NULLS FOR CASSETTE
-         MOVE.L  #PDI1,PDIPORT  PRINTER
+* INITIALIZE THE SERIAL PORTS
 
-
-*        INITIALIZE MC68230 PI/T
-         MOVE.L  #PDI1,A0       BASE ADDRESS OF PI/T
-         MOVE.L  #$0000FF00,D0
-         MOVEP.L D0,1(A0)
-
-*        SELECT MODE 0
-*        IRQ'S INACTIVATED
-*        PORT A--ALL BITS OUTPUTS
-*        PORT B--ALL BITS INPUTS
-
-         MOVE.B  #$60,13(A0)    SUBMODE 01 FOR PORT A; INTERLOCKED HANDS
-         MOVE.B  #$A0,15(A0)    SUBMODE 1X FOR PORT B
-         MOVE.B  #$30,1(A0)     ENABLE HANDSHAKE LINES
-         MOVE.B  #$A8,15(A0)    RESET AND INIT PRINTER
-         MOVE.L  #PDI1+$10,PDIPORT
-
-         MOVE.B  #$A0,15(A0)    CLEAR INIT
-
-* INITIALIZE THE PDI'S
-
-         MOVE.W  #$1515,MD1CON
+         MOVE.W  #$BBBB,MD1CON
          BSR     INITSER        RESET & PROGRAM PDI
 
 * INITIALIZE XON/XOFF (READER ON / READER OFF)
@@ -4735,10 +4709,7 @@ OUTCHRTS RTS                    END OF OUTCH ROUTINE
 *   GET BASE ADDRESS OF SERIAL PORT 1 IN  A0
 *
 
-GETSER1  LEA     SER1,A0        DEFAULT
-         TST.L   ALTSER1        IF ALTERNATE IS ZERO
-         BEQ.S   RETURN         THEN RETURN
-         MOVE.L  ALTSER1,A0     ELSE USE ALTERNATE SERIAL PORT 1
+GETSER1  LEA     SIOBASE,A0     DEFAULT SERIAL PORT 1
 RETURN   RTS     RETURN         (USED FROM A COUPLE OF PLACES)
 
 
@@ -4746,10 +4717,7 @@ RETURN   RTS     RETURN         (USED FROM A COUPLE OF PLACES)
 *   GET BASE ADDRESS OF SERIAL PORT 2 IN A0
 *
 
-GETSER2  LEA     SER2,A0        DEFAULT SERIAL PORT 2
-         TST.L   ALTSER2        IF ALTERNATE IS ZERO
-         BEQ     RETURN         THEN RETURN
-         MOVE.L  ALTSER2,A0     ELSE USE ALTERNATE SERIAL PORT 2
+GETSER2  LEA     SIOBASE+SIOPORT2,A0   DEFAULT SERIAL PORT 2
          RTS                    RETURN
 *
 *     FIX THE BUFFER A5 & A6 SET TO START OF BUFFER QUE
@@ -4857,105 +4825,38 @@ NOAUTOLF DS      0
 LTIME    SET     205000         LONG TIMER 5 SEC @ 8 MHZ
 STIME    SET     41000          SHORT TIMER  100 MLS @ 8 MHZ
 
-PDI1     SET     $010000        PARALLEL PORT ADDRESS
-PITCDDR  SET     $010009        PORT C DATA DIRECTION REGISTER
-PITPCDR  SET     $010019        PORT C DATA REGISTER
-PITTCR   SET     $010021        TIMER CONTROL REGISTER
-PSTATUS  SET     $B             PRINTER STATUS
-PBDATA   SET     3              PRINTER CONTROL--BUSY,PAPER,SELECT
-PDATA    SET     1              PRINTER DATA
-SER1     SET     $010040        TERMINAL
-SER2     SET     $010041        SERIAL PORT2 ADDRESS
-
-*        PRINTER DRIVER
-*
-*    SEND BUFFER TO PRINTER
-*
-PRCRLF   DS      0
-
-         MOVEM.L A5-A6,-(A7)    SAVE REGISTERS
-*
-*   SEND LINE
-*
-LIST     CMP.L   A6,A5          SEE IF AT END OF BUFFER
-         BMI.S   LIST1
-         MOVEM.L (A7)+,A5-A6    RESTORE REGISTERS
-         RTS
-*
-LIST1    MOVE.B  (A5)+,D0       GRAB BYTE
-         BSR.S   CHRPRINT       PRINT CHAR
-         BRA     LIST
-
-* OUTPUT CHAR IN D0 TO PRINTER
-CHRPRINT MOVEM.L D0/D1/D7/A0/A5/A6,-(A7) SAVE SOME REGISTERS
-LIST2    BSR     CHKBRK         CHECK FOR BREAK
-
-         MOVE.L  PDIPORT,A0     A0 = ADDRESS OF PORT
-
-         MOVE.B  3(A7),D0       D0 = CHAR TO BE SENT
-* CHANGE CONTROL CHARS TO "."
-         ANDI.B  #$7F,D0
-         CMPI.B  #CR,D0
-         BEQ.S   LIST25         OK CARRIAGE RETURN
-         CMPI.B  #LF,D0
-         BEQ.S   LIST25         OK LINE FEED
-         CMPI.B  #$20,D0
-         BLT.S   LIST24
-         CMPI.B  #$7F,D0
-         BLT.S   LIST25
-LIST24   MOVE.B  #'.',D0        MAKE CHAR A PERIOD
-LIST25   DS      0
-
-         MOVE.B  D0,PDATA(A0)   SEND DATA
-         MOVE.B  #$68,PDI1+13   STROBE PRINTER
-
-         MOVE.B  #$60,PDI1+13
-
-*
-*
-LIST3    BSR     CHKBRK         CHECK FOR BREAK
-         MOVE.B  PBDATA(A0),D0
-         ANDI.B  #3,D0          PAPER OUT? DESELECTED?
-         SUBQ.B  #1,D0
-         BEQ.S   LIST5
-         MOVE.W  CRTPNT,D7
-         CLR.W   CRTPNT
-         LEA     MSG007(PC),A5
-         BSR     FIXDATA
-         BSR     OUTPUT
-*
-*   WAIT FOR BREAK OR PRINTER TO BE READY
-*
-LERR1    BSR.S   CHKBRK
-         MOVE.B  PBDATA(A0),D0
-         ANDI.B  #3,D0
-         SUBQ.B  #1,D0
-         BNE     LERR1          PRINTER NOT READY
-         MOVE.W  D7,CRTPNT      RESTORE POSSIBLE "PA" SWITCH
-         BRA     LIST2          TRY AGAIN
-
-LIST5    BTST.B  #0,PSTATUS(A0) ACKNOWLEDGE?
-         BEQ.S   LIST3
-
-         MOVEM.L (A7)+,D0/D1/D7/A0/A5/A6  RESTORE REGISTERS
-         RTS
-
-MSG007   DC.B    CR,LF,'PRINTER NOT READY',CR,LF,EOT
-
-
-
-
+SIOBASE  SET     $240300        68681 Dual UART base address
+MODEA    SET      $01               MR1A/MR2A
+SRA      SET      $03               Status Register A
+CSRA     SET      $03               Clock Select Register A
+CRA      SET      $05               Command Register A
+BUFA     SET      $07               RBA, TBA registers
+SIOPORT2 SET      $10           Add to above addresses to get PORT 2 registers
+IMR      SET      $0B               Interrupt mask register
+ISR      SET      $0B               Interrupt status register
 
          DS.B    0
+
+* Printer functions -- stubbed out for DTRK
+
+*    SEND BUFFER TO PRINTER
+*
+PRCRLF
+
+* OUTPUT CHAR IN D0 TO PRINTER
+CHRPRINT
+         RTS
+
 
 *
 *       SEND CHARACTER IN D0.B TO SERIAL PORT IN (A0) (NO NULL PADS)
 *
 OUTCH    BSR.S   CHKBRK         CHECK FOR BREAK
-         MOVE.B  (A0),D1        READ STATUS AGAIN
-         ANDI.B  #$2,D1         CHECK FOR READY TO SEND
-         BEQ.S   OUTCH          STILL NOT READY
-         MOVE.B  D0,2(A0)       SEND CHARACTER  ****************
+
+         BTST    #2, SRA(A0)    Test if 68681 ready to transmit
+         BEQ     OUTCH          If not, keep waiting
+
+         MOVE.B  D0, BUFA(A0)   SEND CHARACTER  ****************
 
 * IF PRINT FLAG SET GOTO PRINTER
          BEQ.S   OUTCH21        NULL; IGNORE SENDING TO PRINTER
@@ -4964,16 +4865,16 @@ OUTCH    BSR.S   CHKBRK         CHECK FOR BREAK
          BSR     CHRPRINT       GOTO PRINTER
 OUTCH21  DS      0
 
-*   CHECK FOR CONTROL W
-         MOVE.B  (A0),D1        READ STATUS
-         ANDI.B  #1,D1
+*   CHECK FOR CONTROL W   (Wait)
+         BTST    #0, SRA(A0)    check if 68681 has received anything
          BEQ.S   CTLW9          CHAR NOT READY
-         MOVE.B  2(A0),D1       READ CHARACTER
+
+         MOVE.B  BUFA(A0),D1       READ CHARACTER
          CMPI.B  #CTLW,D1
          BNE.S   CTLW9          NOT CNTL/W
 CTLWH    BSR.S   CHKBRK         CHECK FOR BREAK
-         MOVE.B  (A0),D1        READ STATUS
-         ANDI.B  #1,D1
+
+         BTST    #1, SRA(A0)    check if 68681 has received anything
          BEQ     CTLWH          WAIT FOR ANY CHAR TO CONTINUE
 CTLW9    RTS
 *
@@ -4981,8 +4882,8 @@ CTLW9    RTS
 *
 CHKBRK   MOVE.L  A0,-(A7)       SAVE A0 * * *
          BSR     GETSER1        RETURNS ADDRESS IN A0
-         MOVE.B  (A0),D1        READ STATUS
-         ANDI.B  #$10,D1
+
+         BTST    #7, SRA(A0)    check if 68681 detected a break
          BNE.S   BREAK
          MOVE.L  (A7)+,A0       RESTORE A0 * * *
          RTS
@@ -4990,12 +4891,13 @@ CHKBRK   MOVE.L  A0,-(A7)       SAVE A0 * * *
 *    WHAT TO DO WHEN THE BREAK IS PRESSED
 *
 
-BREAK2   CLR.B   2(A0)          SEND NULL TO ACIA TO RESET
-BREAK1   BTST.B  #1,(A0)        CHECK IF "TRANSMIT READY"
+BREAK2   MOVE.B  #$40, CRA(A0)  Reset error status
+BREAK1   BTST.B  #2, SRA(A0)    CHECK IF "TRANSMIT READY"
          BEQ.S   BREAK1         WAIT FOR READY
 
-         MOVE.B  2(A0),D0       READ TWO CHARS
-         MOVE.B  2(A0),D0       *
+* DTRK: Is this necessary for 68681?
+*         MOVE.B  2(A0),D0       READ TWO CHARS
+*         MOVE.B  2(A0),D0       *
 
          BTST.B  #4,(A0)        SEE IF BREAK BUTTON RELEASED
          BNE     BREAK2         NO... KEEP LOOPING
@@ -5013,70 +4915,6 @@ MSG013   DC.B    LF,LF,'BREAK',CR,LF,LF,EOT
 
 
          DC.B    0              PAD BYTE
-
-***  OUTPUT BUFFER TO TAPE  ***
-TAPEOUT  MOVEM.L D0-D4/A0-A1,-(A7)  SAVE REGISTERS
-         MOVE.L  A5,A0          REMEMBER WHERE BUFFER STARTS
-         MOVEA.L #PDI1,A1
-         CLR.B   $21(A1)
-         CMPI.W  #'S0',(A0)     HEADER RECORD?
-         BNE.S   TAPEOUT2       NO
-         MOVE.B  #2,9(A1)       YES, PC0 INPUT, PC1 OUTPUT
-         MOVE.W  #700,D3        OUTPUT NULLS (HEADER)
-TAPEOUT1 CLR.B   D0
-         BSR.S   TAPEO
-         SUBQ.W  #1,D3
-         BNE.S   TAPEOUT1
-TAPEOUT2 CMP.L   A6,A5          SEE IF AT OR BEYOND END OF LINE
-         BCS.S   TAPEOUT4       NO. KEEP GOING.
-         MOVE.B  TAPENULS,D3    OUTPUT NULLS AFTER EACH RECORD
-TAPEOUT5 CLR.B   D0             YES. OUTPUT A NULL
-         BSR.S   TAPEO
-         SUBQ.B  #1,D3
-         BNE.S   TAPEOUT5
-         MOVEM.L (A7)+,D0-D4/A0-A1  RESTORE REGISTERS
-         RTS
-TAPEOUT4 MOVE.B  (A5)+,D0       GRAB BYTE TO OUTPUT
-         BSR.S   TAPEO          GO OUTPUT IT
-         BRA.S   TAPEOUT2       GO DO ANOTHER
-*
-* OUTPUTS THE CHARACTER IN D0.B TO TAPE
-* A LOGIC `0' IS RECORDED AS ONE SQUARE WAVE PERIOD OF
-*        1 MILLISEC DURATION, 50% DUTY CYCLE
-* A LOGIC `1' IS RECORDED AS ONE SQUARE WAVE PERIOD OF
-*        500 MICROSEC DURATION, 50% DUTY CYCLE
-*
-TAPEO    ORI.B   #%10000,CCR    SET X BIT IN SR
-         ROXL.B  #1,D0          DATA BIT INTO X
-TAPEO1   ROXL.B  #1,D2          DATA BIT INTO D2
-         BSR.S   TIMERTST       WAIT UNTIL LAST PULSE DONE
-         BCLR.B  #0,$21(A1)     HALT TIMER
-         MOVEQ   #30,D1         TIMER COUNT FOR A `1'
-         BTST.L  #0,D2          SENDING A `1'?
-         BNE.S   TAPEO2         YES.
-         ADDI.L  #32,D1         NO. TIMER COUNT FOR 0
-TAPEO2   MOVEP.L D1,$25(A1)     SET TIMER PRELOAD REGISTER
-         BSET.B  #1,$19(A1)     SEND 1 TO TAPE
-         BSET.B  #0,$21(A1)     START TIMER
-         BSR.S   TIMERTST       WAIT UNTIL PULSE DONE
-         BCLR.B  #0,$21(A1)     HALT TIMER
-         BCLR.B  #1,$19(A1)     SEND 0 TO TAPE
-         BSET.B  #0,$21(A1)     START TIMER
-         ASL.B   #1,D0          SENT 8 BITS?
-         BNE     TAPEO1         NO. CONTINUE
-         RTS
-*
-* WAITS UNTIL PROGRAMMED TIME DELAY HAS ELAPSED
-* (IF TIMER IS RUNNING)
-* ALSO CHECKS FOR BREAK
-* USES D1
-*
-TIMERTST BSR     CHKBRK         CHECK FOR BREAK
-         BTST.B  #0,$21(A1)     IS TIMER RUNNING?
-         BEQ.S   TIMERTS1       NO. RETURN
-         BTST.B  #0,$35(A1)     HAS TIME DELAY ELAPSED?
-         BEQ.S   TIMERTST       NO. WAIT
-TIMERTS1 RTS
 
 *   IF FAULT THEN INITIALIZE AN ACIA
 *
@@ -5115,12 +4953,30 @@ INITSER  MOVEM.L D0/A0,-(A7)  FREE UP SOME WORKING REGISTERS
 INITAC3  SUBQ.L  #1,D0          LOOP AROUND
          BNE     INITAC3
 
+* Initialise serial port 1
          BSR     GETSER1        MOVE ADDRESS INTO A0
-         MOVE.B  #RESET,(A0)    MASTER RESET
-         MOVE.B  MD1CON,(A0)    HOW TO PROGRAM IT
+
+         MOVE.B  #$00, IMR(A0)      Mask off all interrupts
+
+         MOVE.B  #$10, CRA(A0)      Reset MR pointer
+         MOVE.B  #$13, MODEA(A0)    Set MR1A for no parity, 8 bits
+         MOVE.B  #$07, MODEA(A0)    Set MR2A for 1 stop bit
+         MOVE.B  MD1CON, CSRA(A0)   Select baudrate - default is $BB, 9600 Baud
+         MOVE.B  #$20, CRA(A0)      Reset receiver
+         MOVE.B  #$30, CRA(A0)      Reset transmitter
+         MOVE.B  #$05, CRA(A0)      Enable transmitter and receiver
+
+* Initialise serial port 2
          BSR     GETSER2        MOVE ADDRESS INTO A0
-         MOVE.B  #RESET,(A0)    MASTER RESET
-         MOVE.B  MD1CON+1,(A0)  HOW TO PROGRAM IT
+         MOVE.B  #$10, CRA(A0)      Reset MR pointer
+         MOVE.B  #$13, MODEA(A0)    Set MR1B for no parity, 8 bits
+         MOVE.B  #$07, MODEA(A0)    Set MR2B for 1 stop bit
+         MOVE.B  MD1CON+1, CSRA(A0)   Select baudrate - default is $BB, 9600 Baud
+         MOVE.B  #$20, CRA(A0)      Reset receiver
+         MOVE.B  #$30, CRA(A0)      Reset transmitter
+         MOVE.B  #$05, CRA(A0)      Enable transmitter and receiver
+
+
          MOVEM.L (A7)+,A0/D0    RESTORE REGISTERS
          RTS
 
@@ -5252,83 +5108,6 @@ RES195
          MOVEM.L (A7)+,D1-D3/A0/A3   RESTORE THE REGISTERS
          RTS
 
-*
-* INPUT A LINE FROM AUDIO TAPE (PI/T)
-* [ECHO TO PORT1 (ACIA1)]
-*
-TAPEIN   MOVEM.L D1-D4/A0-A3,-(A7)  SAVE WORKING REGISTERS
-         BSR     GETSER1        ACIA1 ADDRESS INTO A0
-         MOVEA.L #PDI1,A1
-         MOVE.B  #2,PITCDDR     PC0 INPUT, PC1 OUTPUT.
-
-* SYNCHRONIZE ON S CHARACTER
-         CLR.B   D1
-TAPEIN10 BSR.S   TAPEIN40       GET TAPE
-         BCS.S   TAPEIN10       WAIT FOR LOW
-TAPEIN11 BSR.S   TAPEIN40       GET TAPE
-         BCC.S   TAPEIN11       WAIT FOR HIGH
-         BSR.S   STARTIMR       START TIMER
-TAPEIN12 ASL.B   #1,D1
-         BSR.S   TAPEIN30       GET ONE BIT FROM TAPE
-         CMPI.B  #'S',D1        S?
-         BNE.S   TAPEIN12       NO. GET NEXT BIT
-         BRA.S   TAPEIN51
-
-* GET ONE CHARACTER FROM THE TAPE
-TAPEIN20 MOVEQ   #2,D1          SET STOP BIT
-TAPEIN21 BSR.S   TAPEIN30       GET 1 BIT FROM TAPE
-         ASL.B   #1,D1          STOP IN CARRY
-         BCC.S   TAPEIN21       NO
-*FALL INTO LOAD BIT ROUTINE FOR LAST BIT
-TAPEIN30 BSR.S   TAPEIN40       GET TAPE
-         BCS.S   TAPEIN30       WAIT FOR LOW
-TAPEIN31 BSR.S   TAPEIN40       GET TAPE
-         BCC.S   TAPEIN31       WAIT FOR HIGH
-         CLR.B   PITTCR         STOP TIMER
-         MOVEP.L $2D(A1),D3     GET PERIOD MEASUREMENT
-         BSR.S   STARTIMR       START TIMER
-         SUBI.L  #$FFFFFF-94,D3 IS IT A LOGIC 1?
-         BLO.S   TAPEIN32       NO
-         ADDQ.B  #1,D1          YES. STORE LOGIC 1
-TAPEIN32 RTS
-
-* READ THE TAPE LEVEL INTO THE CARRY AND CHECK FOR BREAK
-TAPEIN40 MOVE.B  (A0),D2        CHECK FOR ACTIVITY ON PORT1
-         ANDI.B  #$10,D2        CHECK FOR BREAK
-         BNE     BREAK
-         MOVE.B  (A0),D2        SEE IF CHARACTER SENT
-         ANDI.B  #1,D2
-         BEQ.S   TAPEIN41       NONE SENT.
-         MOVE.B  2(A0),D2       READ WHAT WAS SENT
-TAPEIN41 MOVE.B  PITPCDR,D2     READ PI/T
-         ASR.B   #1,D2          DATA INTO CARRY
-         RTS
-
-*STARTS PROGRAMMABLE TIMER
-STARTIMR MOVE.L  #$00FFFFFF,D4  INIT. COUNT. PRELOAD REG.
-         MOVEP.L D4,$25(A1)
-         MOVE.B  #1,PITTCR      START TIMER
-
-         RTS
-
-TAPEIN53 CMPI.B  #$20,D1
-         BLT.S   TAPEIN50       IGNORE CONTROL CHARACTERS
-         MOVE.B  D1,(A6)        SAVE CHARACTER IN BUFFER
-         MOVE.L  A6,D1          CHECK BUFFER FULL
-         SUB.L   A5,D1
-         CMPI.W  #BUFSIZE,D1
-         BPL.S   TAPEIN50       FULL
-         ADDQ.L  #1,A6          INCREMENT BUFFER POINTER
-
-TAPEIN50 BSR     TAPEIN20       GET ONE CHARACTER FROM TAPE
-TAPEIN51 ANDI.B  #$7F,D1        DROP PARITY BIT
-         TST.W   ECHOPT1        SEE IF ECHO ON
-         BEQ.S   TAPEIN52
-         MOVE.B  D1,2(A0)       SEND TO PORT1
-TAPEIN52 CMPI.B  #LF,D1         END OF LINE?
-         BNE.S   TAPEIN53       NO.
-         MOVEM.L (A7)+,D1-D4/A0-A3  RESTORE REGISTERS
-         RTS
 
 *     SCAN COMMAND LINE FOR PORT NUMBER
 *     DU LO VE MD
@@ -8942,8 +8721,8 @@ CT       FADDR   253,T700       APPEND NEW TABLE
          FADDR   242,OUTPUT21   OUTPUT STRING PORT2 (A5) (A6)
          FADDR   241,PORTIN1    INPUT STRING PORT1  (A5) (A6)
          FADDR   240,PORTIN20   INPUT STRING PORT2  (A5) (A6)
-         FADDR   239,TAPEOUT    OUTPUT STRING TO PORT4 (A5) (A6)
-         FADDR   238,TAPEIN     INPUT STRING FROM PORT4 (A5) (A6)
+         FADDR   239,OUTPUT21   OUTPUT STRING TO PORT4 (A5) (A6)      DTRK - was TAPEOUT
+         FADDR   238,PORTIN20   INPUT STRING FROM PORT4 (A5) (A6)     DTRK - was TAPEIN
          FADDR   237,PRCRLF     OUTPUT STRING TO PORT3 (A5) (A6)
          FADDR   236,HEX2DEC    CONVERT HEX D0 TO DECIMAL (A6)+
          FADDR   235,GETHEX     GET HEX CHAR INTO D0 FROM (A5)+
