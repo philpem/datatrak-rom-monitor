@@ -4229,7 +4229,7 @@ P2CMD01  MOVE.B  #BLANK,(A6)+
          MOVE.B  D0,(A0)
 P2CMD2   BTST.B  #$0,(A0)      READ STATUS
          BEQ.S   P2CMD2
-         MOVE.B  2(A0),D0       RECEIVE CHAR FROM PORT 1
+         MOVE.B  BUFA(A0),D0       RECEIVE CHAR FROM PORT 1
          ANDI.B  #$7F,D0
          CMP.B   D7,D0          SEE IF QUIT CHARACTER (CTL A USUALLY)
          BNE.S   P2CMD2
@@ -4245,7 +4245,7 @@ P2CMD2   BTST.B  #$0,(A0)      READ STATUS
 P2CMD4   SUBQ.L  #1,D0          DELAY; ALLOW HOST TO SYNC
          BNE.S   P2CMD4
          BSR     GETSER2
-         MOVE.B  D7,2(A0)       SEND CHAR
+         MOVE.B  D7,BUFA(A0)       SEND CHAR
 P2CMD6   BRA     MACSBUG
 
 MSG006   DC.B    '*TRANSPARENT* EXIT=$',EOT
@@ -4897,11 +4897,11 @@ BREAK2   MOVE.B  #$40, CRA(A0)  Reset error status
 BREAK1   BTST.B  #2, SRA(A0)    CHECK IF "TRANSMIT READY"
          BEQ.S   BREAK1         WAIT FOR READY
 
-* DTRK: Is this necessary for 68681?
-*         MOVE.B  2(A0),D0       READ TWO CHARS
-*         MOVE.B  2(A0),D0       *
+* DTRK: Break status flag only updates when the character is read
+         MOVE.B  BUFA(A0),D0       READ TWO CHARS
+         MOVE.B  BUFA(A0),D0       *
 
-         BTST.B  #4,(A0)        SEE IF BREAK BUTTON RELEASED
+         BTST.B  #7, SRA(A0)    SEE IF BREAK BUTTON RELEASED
          BNE     BREAK2         NO... KEEP LOOPING
          RTS
 
@@ -4920,30 +4920,10 @@ MSG013   DC.B    LF,LF,'BREAK',CR,LF,LF,EOT
 
 *   IF FAULT THEN INITIALIZE AN ACIA
 *
-FAULTSER MOVEM.L D0/A0,-(A7)  FREE UP SOME WORKING REGISTERS
+FAULTSER
+*  DTRKL: Fall through into INITSER
 
-* DELAY TO ALLOW ACIA TO FINISH TRANSMITTING
-*  LONGEST TIME FOR TWO CHARACTERS; 110 BAUD, 16MHZ NO WAIT STATES
-         MOVE.L  #50000,D0      DELAY A WHILE
-FAULTAC4 SUBQ.L  #1,D0          LOOP AROUND
-         BNE     FAULTAC4
 
-         BSR     GETSER1        MOVE ADDRESS INTO A0
-         MOVE.B  (A0),D0        READ STATUS
-         ANDI.B  #$70,D0        SEE IF FAULT
-         BEQ.S   FAULTAC2
-         MOVE.B  #RESET,(A0)    MASTER RESET
-         MOVE.B  MD1CON,(A0)    HOW TO PROGRAM IT
-
-FAULTAC2 BSR     GETSER2        MOVE ADDRESS INTO A0
-         MOVE.B  (A0),D0
-         ANDI.B  #$70,D0
-         BEQ.S   FAULTAC3
-         MOVE.B  #RESET,(A0)    MASTER RESET
-         MOVE.B  MD1CON+1,(A0)  HOW TO PROGRAM IT
-FAULTAC3
-         MOVEM.L (A7)+,A0/D0    RESTORE REGISTERS
-         RTS
 
 *   INITIALIZE BOTH ACIAs
 *
@@ -4986,14 +4966,12 @@ INITAC3  SUBQ.L  #1,D0          LOOP AROUND
 *    ACIA ADDRESS IN (A0)
 *
 
-INCHNE   MOVE.B  (A0),D1        (INCH NO ECHO) LOAD STATUS SIDE
-         ANDI.B  #$10,D1        .              CHECK FOR BREAK
+INCHNE   BTST    #7, SRA(A0)    check if 68681 detected a break
          BNE     BREAK          .              GO PROCESS IT
 
-         MOVE.B  (A0),D1        LOAD STATUS SIDE
-         ANDI.B  #1,D1          SEE IF READY
+         BTST    #0, SRA(A0)    check if 68681 received a byte
          BEQ.S   INCHNE         IF NOT READY
-         MOVE.B  2(A0),D0       READ DATA SIDE   *****************
+         MOVE.B  BUFA(A0),D0    READ DATA SIDE   *****************
          ANDI.B  #$7F,D0        DROP PARITY BIT
          RTS
 
@@ -5060,21 +5038,20 @@ PORT2300 LEA     MSG030(PC),A5  TIMEOUT ERROR
 MSG030   DC.B    'TIMEOUT',EOT
 
 
-P2READY  MOVE.B  (A0),D1        CHECK FOR ACTIVITY ON PORT1
-         ANDI.B  #$10,D1        CHECK FOR BREAK
+P2READY  BTST    #7, SRA(A0)    check if 68681 port 1 detected a break
          BNE     BREAK
-         MOVE.B  2(A0),D1       READ POSSIBLE CHAR PORT 1; IGNORE
+         MOVE.B  BUFA(A0),D1    READ POSSIBLE CHAR PORT 1; IGNORE
 
-         MOVE.B  (A3),D1        READ STATUS OF PORT2
+         MOVE.B  SRA(A3),D1     READ STATUS OF PORT2
          ANDI.B  #1,D1          SEE IF CHARACTER SENT
          RTS
 
-RES      MOVE.B  2(A3),D1       D1 = CHAR READ FROM PORT2
+RES      MOVE.B  BUFA(A3),D1    D1 = CHAR READ FROM PORT2
          ANDI.B  #$7F,D1        DROP PARITY BIT
 
          TST.W   ECHOPT1        SEE IF ECHO ON
          BEQ.S   RES140
-         MOVE.B  D1,2(A0)       SEND TO DATA SIDE (PORT1)
+         MOVE.B  D1,BUFA(A0)    SEND TO DATA SIDE (PORT1)
 RES140
 
          CMPI.B  #CR,D1
@@ -5101,10 +5078,9 @@ RES190   CMP.L   A5,A6
 
          MOVE.B  XONOFF+1,D0
          BEQ.S   RES195         XOFF = NULL CHAR; IGNORE
-RES194   MOVE.B  (A3),D1
-         ANDI.B  #2,D1
+RES194   BTST    #2,SRA(A3)
          BEQ     RES194         PORT2 DATA OUT NOT-READY
-         MOVE.B  D0,2(A3)       STOP READER
+         MOVE.B  D0,BUFA(A3)    STOP READER
 RES195
 
          MOVEM.L (A7)+,D1-D3/A0/A3   RESTORE THE REGISTERS
