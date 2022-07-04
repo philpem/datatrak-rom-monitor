@@ -591,7 +591,7 @@ AV48     DS.L    1              48  $30
          DS.L    1              254  $FE            2ND
          DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              255  $FF VECTOR FOR 1ST IPC DISK CONTROLLER
-
+VECTAB_END
 
 *  PSEUDO REGISTERS
 
@@ -1152,12 +1152,12 @@ FIXDCRLF LEA     BUFFER,A6
 * INITIALIZE VECTORS *
 **********************
 *                               Set most vectors to point at "????" routine
-INITVECT LEA     VECTAB+8,A0    Skip (Restart) STACK & ADDRESS vectors
+INITVECT LEA     VECTAB+12,A0    Skip (Restart) STACK & ADDRESS vectors
          LEA     ABORTE(PC),A1  A1 = "Default" TRAP ERROR routine address
 
 INIT0    MOVE.W  #$4EF9,(A0)+   Store jump instruction
          MOVE.L  A1,(A0)+       INITIALIZE VECTOR
-         CMPA.L  #$400,A0       Done?
+         CMPA.L  #VECTAB_END,A0 Done?
          BMI.S   INIT0          *
          RTS
 
