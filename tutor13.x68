@@ -250,7 +250,7 @@ AV48     DS.L    1              48  $30
          DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              84  $54
          DS.W    1                            JMP.L instr (4EF9)
-         DS.L    1              85  $55
+AVPH1    DS.L    1              85  $55
          DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              86  $56
          DS.W    1                            JMP.L instr (4EF9)
@@ -420,7 +420,7 @@ AV48     DS.L    1              48  $30
          DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              169  $A9
          DS.W    1                            JMP.L instr (4EF9)
-         DS.L    1              170  $AA
+AVPH2    DS.L    1              170  $AA
          DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              171  $AB
          DS.W    1                            JMP.L instr (4EF9)
@@ -590,7 +590,7 @@ AV48     DS.L    1              48  $30
          DS.W    1                            JMP.L instr (4EF9)
          DS.L    1              254  $FE            2ND
          DS.W    1                            JMP.L instr (4EF9)
-         DS.L    1              255  $FF VECTOR FOR 1ST IPC DISK CONTROLLER
+AVPH3    DS.L    1              255  $FF VECTOR FOR 1ST IPC DISK CONTROLLER
 VECTAB_END
 
 *  PSEUDO REGISTERS
@@ -686,7 +686,7 @@ CRTPNT   DS.W    1              OUTPUT TO PRINTER AND CRT
 
 CTLINK   DS.L    1              POINTER TO FIRST TABLE
 
-
+SHAD07   DS.B    1              DATATRAK: Shadow of $240701 ASIC register
 
 ENDHRAM  DS.W    0              MUST START ON WORD BOUNDRY
 
@@ -1152,7 +1152,7 @@ FIXDCRLF LEA     BUFFER,A6
 * INITIALIZE VECTORS *
 **********************
 *                               Set most vectors to point at "????" routine
-INITVECT LEA     VECTAB+12,A0    Skip (Restart) STACK & ADDRESS vectors
+INITVECT LEA     VECTAB+12,A0   Skip (Restart) STACK & ADDRESS vectors
          LEA     ABORTE(PC),A1  A1 = "Default" TRAP ERROR routine address
 
 INIT0    MOVE.W  #$4EF9,(A0)+   Store jump instruction
@@ -1244,7 +1244,10 @@ START11  MOVE.W  #$2700,SR      MASK OFF INTERRUPTS
          MOVE.L  #(254<<24)+CT,CTLINK
 
 
-
+* Set up DATATRAK Phase Register interrupt handler
+         ADDR2MEM  DTRKPHA,AVPH1
+         ADDR2MEM  DTRKPHA,AVPH2
+         ADDR2MEM  DTRKPHA,AVPH3
 
 
 ************************************************************************
@@ -1262,6 +1265,8 @@ MACSBUG  MOVE.W  #$2700,SR      MASK OFF INTERRUPTS
 
          LEA     MSG001(PC),A5  > (Prompt)
          BSR     FIXDATA
+
+         MOVE.W    #$2400,SR       DATATRAK: Set IPL=5, enable interrupts
 
          TST.W   TRACEON        SEE IF IN TRACE MODE
          BEQ.S   MACSBUG1
@@ -8734,6 +8739,37 @@ F120     BSR     OUTPUT         OUTPUT STRING,CR,LF PORT1 (A5) (A6)
 
          DCB.B   $54,0          PAD BYTES
 
+
+*-------------------------------------------------------------------------
+* File DATATRAK  Datatrak Locator Mk2 specific code               07/03/22
+
+*
+* Handle Datatrak phase interrupt
+*
+DTRKPHA
+         MOVEM.L D0-D1/A0-A1,-(A7)      SAVE REGISTERS
+
+* Read phase measurement
+
+         MOVEA.L #$240201, A0           Load PHASE_LO register address
+         MOVEQ   #0, D0                 Clear D0
+         MOVE.B  (A0), D0               Get low byte of phase measurement
+         SUBQ.L  #1, A0                 Decrement address to get PHASE_HI addr ($240200)
+         MOVE.W  (A0), D1               Get high nibble of phase measurement  (not sure why this is a word read but whatever)
+         ANDI.W  #$F, D1                Only keep the lowest nibble
+         LSL.W   #8, D1                 Shift into the MSB of the word
+         OR.W    D1, D0                 OR in the LSByte
+* D0 now contains the phase reading
+
+
+* Pet the watchdog timer
+         MOVEA.L #$240701, A0           Load 240701 addr into A0
+         EORI.B  #$80,  SHAD07          Flip MSB of $240701 ASIC reg
+         MOVE.B  SHAD07, (A0)           Write to ASIC
+
+
+         MOVEM.L (A7)+,D0-D1/A0-A1      RESTORE REGISTERS
+         RTE
 
 *-------------------------------------------------------------------------
 * File YROM      Version/checksum/identification                  07/29/82
