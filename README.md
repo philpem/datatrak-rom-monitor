@@ -14,7 +14,7 @@ The code can be assembled with the [Linux port of the EASy68k macro assembler](h
   - **Porting**. Adjusted code and RAM base addresses to account for the Locator memory map.
   - **Vector remapping (trampolines)**. The Locator Mk.2 has ROM mapped at `0x000000`, which prevents the vector area from being overwritten.
     To allow vectors to be remapped, the ROM vectors point to RAM addresses; these addresses contain a jump instruction which can be
-    mofified to point to user vector code.
+    modified to point to user vector code.
 
 
 ## Build instructions
